@@ -11,7 +11,7 @@ mp_drawing_style_dot_Wrong = mp_drawing.DrawingSpec(color=(100,100,100), thickne
 mp_drawing_style_line_Wrong = mp_drawing.DrawingSpec(color=(0,0,255), thickness=2, circle_radius=2)
 mp_drawing_style_dot_Right = mp_drawing.DrawingSpec(color=(100,100,0), thickness=2, circle_radius=2)
 mp_drawing_style_line_Right = mp_drawing.DrawingSpec(color=(0,255,0), thickness=2, circle_radius=2)
-
+font = cv2.FONT_HERSHEY_SIMPLEX
 
 # For static images:
 IMAGE_FILES = []
@@ -91,19 +91,20 @@ with mp_pose.Pose(
         if Inclination_SHOULDER <= 0.06 and Inclination_SHOULDER >= -0.06 and Inclination_HIP <= 0.06 and Inclination_HIP >= -0.06:
             mp_drawing_style_dot = mp_drawing_style_dot_Right
             mp_drawing_style_line = mp_drawing_style_line_Right
-            print("적절한 자세 :)")
+            cv2.putText(image, "GOOD Pose! :)", (50, 100), font, 1, (0,255,0),2)
+            print("GOOD Pose! :)")
         else:
             mp_drawing_style_dot = mp_drawing_style_dot_Wrong
             mp_drawing_style_line = mp_drawing_style_line_Wrong
-            print("부적절한 자세 :(")
+            cv2.putText(image, "Bad Pose!!! :(", (50, 100), font, 1, (0,0,255),2)
+            print("Bad Pose!!! :(")
     except:
         pass
-    mp_drawing.draw_landmarks(
+    mp_drawing.draw_landmarks(  
         image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS, mp_drawing_style_dot, mp_drawing_style_line)
-    # Flip the image horizontally for a selfie-view display.
-    cv2.imshow('MediaPipe Pose', cv2.flip(image, 1))
+    cv2.imshow('Chiropractic assistant', image)
     
-    
+
     #나가는 버튼 press buttons to escape
     if cv2.waitKey(5) & 0xFF == 27: 
       break

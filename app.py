@@ -98,8 +98,6 @@ class chiropractic(Exception):
         return image, results
 
 
-
-
 if __name__ == "__MAIN__":
     chiropractic = chiropractic()
     chiropractic.start()

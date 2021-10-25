@@ -1,111 +1,103 @@
-import cv2
-import mediapipe as mp
-import numpy as np
+#!/bin/python3.8
+#-*- coding:utf-8 -*-
 
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
-mp_pose = mp.solutions.pose
-mp_drawing_style_dot = mp_drawing.DrawingSpec(color=(255,255,255), thickness=2, circle_radius=2)
-mp_drawing_style_line = mp_drawing.DrawingSpec(color=(255,255,255), thickness=2, circle_radius=2)
-mp_drawing_style_dot_Wrong = mp_drawing.DrawingSpec(color=(100,100,100), thickness=2, circle_radius=2)
-mp_drawing_style_line_Wrong = mp_drawing.DrawingSpec(color=(0,0,255), thickness=2, circle_radius=2)
-mp_drawing_style_dot_Right = mp_drawing.DrawingSpec(color=(100,100,0), thickness=2, circle_radius=2)
-mp_drawing_style_line_Right = mp_drawing.DrawingSpec(color=(0,255,0), thickness=2, circle_radius=2)
-font = cv2.FONT_HERSHEY_SIMPLEX
+class chiropractic(Exception):
+    def __init__(self):
+        import cv2
+        import mediapipe
+        import numpy
+        self.thread = []
+        self.ext = False
 
-# For static images:
-IMAGE_FILES = []
-BG_COLOR = (192, 192, 192) # gray
-with mp_pose.Pose(
-    static_image_mode=True,
-    model_complexity=1,
-    enable_segmentation=True,
-    min_detection_confidence=0.5) as pose:
-  for idx, file in enumerate(IMAGE_FILES):
-    image = cv2.imread(file)
-    image_height, image_width, _ = image.shape
-    # Convert the BGR image to RGB before processing.
-    results = pose.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        # Get Preset
 
-    if not results.pose_landmarks:
-      continue
-    print(
-        f'Nose coordinates: ('
-        f'{results.pose_landmarks.landmark[mp_pose.PoseLandmark.NOSE].x * image_width}, '
-        f'{results.pose_landmarks.landmark[mp_pose.PoseLandmark.NOSE].y * image_height})'
-    )
+        self.opencv = cv2
+        mp_drawing = mediapipe.solutions.drawing_utils
+        mp_drawing_styles = mediapipe.solutions.drawing_styles
+        mp_pose = mediapipe.solutions.pose
+        self.pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+        self.mp_drawing_style_dot = mp_drawing.DrawingSpec(color=(255,255,255), thickness=2, circle_radius=2)
+        self.mp_drawing_style_line = mp_drawing.DrawingSpec(color=(255,255,255), thickness=2, circle_radius=2)
+        self.mp_drawing_style_dot_Wrong = mp_drawing.DrawingSpec(color=(100,100,100), thickness=2, circle_radius=2)
+        self.mp_drawing_style_line_Wrong = mp_drawing.DrawingSpec(color=(0,0,255), thickness=2, circle_radius=2)
+        self.mp_drawing_style_dot_Right = mp_drawing.DrawingSpec(color=(100,100,0), thickness=2, circle_radius=2)
+        self.mp_drawing_style_line_Right = mp_drawing.DrawingSpec(color=(0,255,0), thickness=2, circle_radius=2)
+        self.font = cv2.FONT_HERSHEY_SIMPLEX
 
-    annotated_image = image.copy()
-    # Draw segmentation on the image.
-    # To improve segmentation around boundaries, consider applying a joint
-    # bilateral filter to "results.segmentation_mask" with "image".
-    condition = np.stack((results.segmentation_mask,) * 3, axis=-1) > 0.1
-    bg_image = np.zeros(image.shape, dtype=np.uint8)
-    bg_image[:] = BG_COLOR
-    annotated_image = np.where(condition, annotated_image, bg_image)
-    
-    # Draw pose landmarks on the image.
-    mp_drawing.draw_landmarks(annotated_image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS, mp_drawing_style_dot, mp_drawing_style_line)
-    cv2.imwrite('/tmp/annotated_image' + str(idx) + '.png', annotated_image)
-    
-    # Plot pose world landmarks.
-    mp_drawing.plot_landmarks(
-        results.pose_world_landmarks, mp_pose.POSE_CONNECTIONS)
+    def start(self): # Open Thread
+        from threading import Thread
+        cap = Thread(target=self.capture)
+        cap.start()
+        self.thread.append(cap)
+        assistant = Thread(target=self.assistant)
+        assistant.start()
+        self.thread.append(cap)
 
-# For webcam input:
-cap = cv2.VideoCapture(0)
-with mp_pose.Pose(
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5) as pose:
-  while cap.isOpened():
-    success, image = cap.read()
-    if not success:
-      print("Ignoring empty camera frame.")
-      # If loading a video, use 'break' instead of 'continue'.
-      continue
-
-    # To improve performance, optionally mark the image as not writeable to
-    # pass by reference.
-    image.flags.writeable = False
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    results = pose.process(image)
-
-    # Draw the pose annotation on the image.
-    image.flags.writeable = True
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-
-
-
-    ### core code ###
-
-    try:
-        #랜드마크 추출 Extrack landmarks
-        landmarks = results.pose_landmarks.landmark
+        while True: # Check exit key
+            if self.cv2.waitKey(5) & 0xFF == 27: 
+                self.ext = True
+                for i in self.thread:
+                    i.join()
+                break
+            
         
-        #어깨, 골반 기울기 계산 Calculate inclination of shoulder and that of hip
-        Inclination_SHOULDER = (landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y - landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y) / (landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x - landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x)
-        #Heap이 아닌 Hip...
-        Inclination_HIP = (landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].y - landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value].y) / (landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].x - landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value].x)
 
-        #자세 판단 Consider if it is correct pose or not
-        if Inclination_SHOULDER <= 0.06 and Inclination_SHOULDER >= -0.06 and Inclination_HIP <= 0.06 and Inclination_HIP >= -0.06:
-            mp_drawing_style_dot = mp_drawing_style_dot_Right
-            mp_drawing_style_line = mp_drawing_style_line_Right
-            cv2.putText(image, "GOOD Pose! :)", (50, 100), font, 1, (0,255,0),2)
-            print("GOOD Pose! :)")
-        else:
-            mp_drawing_style_dot = mp_drawing_style_dot_Wrong
-            mp_drawing_style_line = mp_drawing_style_line_Wrong
-            cv2.putText(image, "Bad Pose!!! :(", (50, 100), font, 1, (0,0,255),2)
-            print("Bad Pose!!! :(")
-    except:
-        pass
-    mp_drawing.draw_landmarks(  
-        image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS, mp_drawing_style_dot, mp_drawing_style_line)
-    cv2.imshow('Chiropractic assistant', image)
+    def capture(self):
+        while True:
+            if self.ext == True: break
+            cap = self.cv2.VideoCapture(0)
+            self.success, self.image = cap.read()
     
+    def assistant(self):
+        while True:
+            if self.ext == True: break
+            image = self.image
+            image, results = self.getpose(image) # Get pose result
+            landmarks = results.pose_landmarks.landmark # Get landmark
+            try:
+                image = self.posecheck(landmarks=landmarks) # Check the Pose (Caculate)
+            except:
+                print("Something Went Wrong!! (ON POSECHECK)")
+                self.cv2.putText(image, "Something went wrong", (50, 100), self.font, 1, (0,0,255),2)
+            self.mp_drawing.draw_landmarks(image, results.pose_landmarks, self.mp_pose.POSE_CONNECTIONS, self.mp_drawing_style_dot, self.mp_drawing_style_line)
+            self.cv2.imshow('Chiropractic assistant', image)
 
-    #나가는 버튼 press buttons to escape
-    if cv2.waitKey(5) & 0xFF == 27: 
-      break
-cap.release()
+            if self.cv2.waitKey(5) & 0xFF == 27: 
+                self.ext = True
+                break
+        
+
+    def posecheck(self, landmarks, image):
+            # Calculate inclination of shoulder and that of hip
+            Inclination_SHOULDER = (landmarks[self.mp_pose.PoseLandmark.LEFT_SHOULDER.value].y - landmarks[self.mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y) / (landmarks[self.mp_pose.PoseLandmark.LEFT_SHOULDER.value].x - landmarks[self.mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x)
+            # Caculate HIP
+            Inclination_HIP = (landmarks[self.mp_pose.PoseLandmark.LEFT_HIP.value].y - landmarks[self.mp_pose.PoseLandmark.RIGHT_HIP.value].y) / (landmarks[self.mp_pose.PoseLandmark.LEFT_HIP.value].x - landmarks[self.mp_pose.PoseLandmark.RIGHT_HIP.value].x)
+
+            # Consider if it is correct pose or not
+            if Inclination_SHOULDER <= 0.06 and Inclination_SHOULDER >= -0.06 and Inclination_HIP <= 0.06 and Inclination_HIP >= -0.06:
+                mp_drawing_style_dot = self.mp_drawing_style_dot_Right
+                mp_drawing_style_line = self.mp_drawing_style_line_Right
+                self.cv2.putText(image, "GOOD Pose! :)", (50, 100), self.font, 1, (0,255,0),2)
+                print("GOOD Pose! :)")
+            else:
+                mp_drawing_style_dot = self.mp_drawing_style_dot_Wrong
+                mp_drawing_style_line = self.mp_drawing_style_line_Wrong
+                self.cv2.putText(image, "Bad Pose!!! :(", (50, 100), self.font, 1, (0,0,255),2)
+                print("Bad Pose!!! :(")
+
+            return image
+            pass
+        
+
+    def getpose(self, image):
+        image.flags.writeable = False
+        image = self.cv2.cvtColor(image, self.cv2.COLOR_BGR2RGB)
+        results = self.pose.process(image) # pose process
+        image.flags.writeable = True
+        image = self.cv2.cvtColor(image, self.cv2.COLOR_RGB2BGR)
+        return image, results
+
+
+if __name__ == "__MAIN__":
+    chiropractic = chiropractic()
+    chiropractic.start()

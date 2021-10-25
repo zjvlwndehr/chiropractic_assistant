@@ -84,7 +84,7 @@ with mp_pose.Pose(
         
         #어깨, 골반 기울기 계산 Calculate inclination of shoulder and that of hip
         Inclination_SHOULDER = (landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].y - landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y) / (landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value].x - landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x)
-        #Heap이 아닌 ip...
+        #Heap이 아닌 Hip...
         Inclination_HIP = (landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].y - landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value].y) / (landmarks[mp_pose.PoseLandmark.LEFT_HIP.value].x - landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value].x)
 
         #자세 판단 Consider if it is correct pose or not

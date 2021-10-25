@@ -5,7 +5,6 @@ class chiropractic(Exception):
     def __init__(self):
         import cv2
         import mediapipe
-        import numpy
         self.thread = []
         self.ext = False
 
